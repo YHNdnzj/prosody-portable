@@ -11,6 +11,8 @@ for module in *.txt; do
     if [[ -e "$target" ]]; then
         echo "Overwriting existing $filename..."
         rm "$target"
+    else
+        echo "Fetching $filename..."
     fi
 
     wcurl "$(< "$module")" -O "$target" --curl-options="--no-progress-meter"
