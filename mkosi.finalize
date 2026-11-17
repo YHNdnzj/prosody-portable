@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+set -eu
+
+IFS='-' read -r pkgver_image _ <<< "$IMAGE_VERSION"
+pkgver_pkg="$(< "$BUILDROOT/usr/lib/prosody/prosody.version")"
+
+if [[ "$pkgver_image" != "$pkgver_pkg" ]]; then
+    echo "ERROR: version mismatch between image and installed package ($pkgver_image vs $pkgver_pkg)"
+    exit 1
+fi
