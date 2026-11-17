@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+set -eu
+
+eval "$(. /usr/share/devtools/makepkg.conf.d/x86_64.conf && declare -p CFLAGS LDFLAGS)"
+export CFLAGS LDFLAGS
+
+mkosi-chroot luarocks install --lua-version="$LUA_VERSION" --tree="$DESTDIR/usr/" --deps-mode=none --no-manifest luaunbound
