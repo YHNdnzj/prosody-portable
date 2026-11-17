@@ -1,0 +1,34 @@
+[Unit]
+Description=Prosody XMPP (Jabber) Server
+Documentation=https://prosody.im/doc
+Documentation=https://wiki.archlinux.org/title/Prosody
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+User=prosody
+Type=notify-reload
+ExecStart=/usr/bin/prosody -F
+Restart=on-abnormal
+
+ConfigurationDirectory=prosody
+StateDirectory=prosody
+StateDirectoryMode=0750
+WorkingDirectory=/var/lib/prosody
+#LogsDirectory=prosody
+
+# Load TLS certs via credentials
+RefreshOnReload=credentials
+
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+ProtectProc=invisible
+PrivateDevices=yes
+NoNewPrivileges=yes
+
+IOAccounting=yes
+IPAccounting=yes
+
+[Install]
+WantedBy=multi-user.target

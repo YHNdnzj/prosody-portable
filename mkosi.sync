@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+set -eu
+
+mkdir -p "extra-modules/files"
+
+cd extra-modules
+for module in *.txt; do
+    filename="mod_${module%.txt}.lua"
+    target="files/$filename"
+
+    if [[ -e "$target" ]]; then
+        echo "Overwriting existing $filename..."
+        rm "$target"
+    fi
+
+    wcurl "$(< "$module")" -O "$target" --curl-options="--no-progress-meter"
+done
