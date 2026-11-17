@@ -1,0 +1,1 @@
+https://hg.prosody.im/prosody-modules/raw-file/a46d5a075fbe/mod_sasl2_sm/mod_sasl2_sm.lua
