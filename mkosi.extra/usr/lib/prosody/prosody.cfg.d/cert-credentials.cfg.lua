@@ -1,1 +1,1 @@
-certs = "/run/credentials/prosody.service"
+certificates = "/run/credentials/prosody.service"
