@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -eu
+shopt -s nullglob
 
 mkdir -p "extra-modules/files"
 
@@ -16,4 +17,8 @@ for module in *.txt; do
     fi
 
     wcurl "$(< "$module")" -O "$target" --curl-options="--no-progress-meter"
+done
+
+for p in patches/*.patch; do
+    patch -Np1 -i "$p" -d files/
 done
