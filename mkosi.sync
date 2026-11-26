@@ -20,5 +20,5 @@ for module in *.txt; do
 done
 
 for p in patches/*.patch; do
-    patch -Np1 -i "$p" -d files/
+    patch -d files/ -Np1 < "$p"
 done
