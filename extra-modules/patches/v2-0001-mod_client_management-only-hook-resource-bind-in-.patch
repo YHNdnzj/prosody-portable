@@ -1,0 +1,149 @@
+From 878cdabc81cab13be32cb268d9329865eda26ad8 Mon Sep 17 00:00:00 2001
+From: Mike Yuan <me@yhndnzj.com>
+Date: Sun, 22 Nov 2026 17:56:04 +0100
+Subject: [PATCH v2 1/4] mod_client_management: only hook resource-bind in
+ non-strict mode
+
+It operates exclusively on sessions without client_id, i.e. legacy
+ones, which may not happen if enforce_client_ids is turned on.
+---
+ mod_client_management.lua | 116 +++++++++++++++++++-------------------
+ 1 file changed, 58 insertions(+), 58 deletions(-)
+
+diff --git a/mod_client_management.lua b/mod_client_management.lua
+index 86e9b9d..7044c52 100644
+--- a/mod_client_management.lua
++++ b/mod_client_management.lua
+@@ -84,64 +84,6 @@ module:hook("sasl2/c2s/success", function (event)
+ 	end
+ end);
+ 
+-local function find_client_by_resource(username, resource)
+-	local full_jid = jid.join(username, module.host, resource);
+-	local clients = client_store:get(username);
+-	if not clients then return; end
+-
+-	for _, client_state in pairs(clients) do
+-		if client_state.full_jid == full_jid then
+-			return client_state;
+-		end
+-	end
+-end
+-
+-module:hook("resource-bind", function (event)
+-	local session = event.session;
+-	if session.client_id then return; end
+-	local is_new_client;
+-	local client_state = find_client_by_resource(event.session.username, event.session.resource);
+-	local now = os.time();
+-	if not client_state then
+-		is_new_client = true;
+-		client_state = {
+-			id = id.short();
+-			first_seen = now;
+-			user_agent = nil;
+-			full_jid = nil;
+-			last_seen = nil;
+-			mechanisms = {};
+-			legacy = true;
+-		};
+-	end
+-
+-	-- Update state
+-	client_state.full_jid = session.full_jid;
+-	client_state.last_seen = now;
+-
+-	local legacy_info = session.client_management_info;
+-	if legacy_info then
+-		client_state.mechanisms[legacy_info.mechanism] = now;
+-		if legacy_info.fast_auth then
+-			client_state.fast_auth = now;
+-		end
+-
+-		local token_id = legacy_info.token_info and legacy_info.token_info.id;
+-		if token_id then
+-			client_state.auth_token_id = token_id;
+-		end
+-	else
+-		session.log("warn", "Missing client management info")
+-	end
+-
+-	-- Store updated state
+-	client_store:set_key(session.username, client_state.id, client_state);
+-
+-	if is_new_client then
+-		module:fire_event("client_management/new-client", { client = client_state; session = session });
+-	end
+-end);
+-
+ if strict then
+ 	module:hook_tag(xmlns_sasl2, "authenticate", function (session, auth)
+ 		local user_agent = auth:get_child("user-agent");
+@@ -181,6 +123,64 @@ else
+ 			fast_auth = sasl_handler.fast_auth;
+ 		};
+ 	end);
++
++	local function find_client_by_resource(username, resource)
++		local full_jid = jid.join(username, module.host, resource);
++		local clients = client_store:get(username);
++		if not clients then return; end
++
++		for _, client_state in pairs(clients) do
++			if client_state.full_jid == full_jid then
++				return client_state;
++			end
++		end
++	end
++
++	module:hook("resource-bind", function (event)
++		local session = event.session;
++		if session.client_id then return; end
++		local is_new_client;
++		local client_state = find_client_by_resource(event.session.username, event.session.resource);
++		local now = os.time();
++		if not client_state then
++			is_new_client = true;
++			client_state = {
++				id = id.short();
++				first_seen = now;
++				user_agent = nil;
++				full_jid = nil;
++				last_seen = nil;
++				mechanisms = {};
++				legacy = true;
++			};
++		end
++
++		-- Update state
++		client_state.full_jid = session.full_jid;
++		client_state.last_seen = now;
++
++		local legacy_info = session.client_management_info;
++		if legacy_info then
++			client_state.mechanisms[legacy_info.mechanism] = now;
++			if legacy_info.fast_auth then
++				client_state.fast_auth = now;
++			end
++
++			local token_id = legacy_info.token_info and legacy_info.token_info.id;
++			if token_id then
++				client_state.auth_token_id = token_id;
++			end
++		else
++			session.log("warn", "Missing client management info")
++		end
++
++		-- Store updated state
++		client_store:set_key(session.username, client_state.id, client_state);
++
++		if is_new_client then
++			module:fire_event("client_management/new-client", { client = client_state; session = session });
++		end
++	end);
+ end
+ 
+ local function is_password_mechanism(mech_name)
+-- 
+2.54.0 (Apple Git-157)
+

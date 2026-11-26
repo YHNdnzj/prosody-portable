@@ -1,0 +1,48 @@
+From 5207c94c720548902e49b02581df1e0a3b37b480 Mon Sep 17 00:00:00 2001
+From: Mike Yuan <me@yhndnzj.com>
+Date: Sun, 22 Nov 2026 16:26:49 +0100
+Subject: [PATCH v2 3/4] mod_client_management: reject legacy SASL request with
+ proper xmlns
+
+---
+ mod_client_management.lua | 10 ++++++----
+ 1 file changed, 6 insertions(+), 4 deletions(-)
+
+diff --git a/mod_client_management.lua b/mod_client_management.lua
+index 866a6e7..72f5527 100644
+--- a/mod_client_management.lua
++++ b/mod_client_management.lua
+@@ -85,11 +85,13 @@ module:hook("sasl2/c2s/success", function (event)
+ end);
+ 
+ if strict then
++	local xmlns_sasl = "urn:ietf:params:xml:ns:xmpp-sasl";
++
+ 	module:hook_tag(xmlns_sasl2, "authenticate", function (session, auth)
+ 		local user_agent = auth:get_child("user-agent");
+ 		if not user_agent or not user_agent.attr.id then
+ 			local failure = st.stanza("failure", { xmlns = xmlns_sasl2 })
+-				:tag("malformed-request", { xmlns = "urn:ietf:params:xml:ns:xmpp-sasl" }):up()
++				:tag("malformed-request", { xmlns = xmlns_sasl }):up()
+ 				:text_tag("text", "Client identifier required but not supplied");
+ 			session.send(failure);
+ 			return true;
+@@ -100,12 +102,12 @@ if strict then
+ 		module:log("error", "mod_saslauth is enabled, but enforce_client_ids is enabled and will prevent it from working");
+ 	end
+ 
+-	module:hook("stanza/urn:ietf:params:xml:ns:xmpp-sasl:auth", function (event)
++	module:hook_tag(xmlns_sasl, "auth", function (event)
+ 		-- Block legacy SASL, if for some reason it is being used (either mod_saslauth is loaded,
+ 		-- or clients try it without advertisement)
+ 		module:log("warn", "Blocking legacy SASL authentication because enforce_client_ids is enabled");
+-		local failure = st.stanza("failure", { xmlns = xmlns_sasl2 })
+-			:tag("malformed-request", { xmlns = "urn:ietf:params:xml:ns:xmpp-sasl" }):up()
++		local failure = st.stanza("failure", { xmlns = xmlns_sasl })
++			:tag("malformed-request"):up()
+ 			:text_tag("text", "Legacy SASL authentication is not available on this server");
+ 		event.session.send(failure);
+ 		return true;
+-- 
+2.54.0 (Apple Git-157)
+

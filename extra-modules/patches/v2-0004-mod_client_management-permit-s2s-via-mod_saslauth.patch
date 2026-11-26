@@ -1,0 +1,62 @@
+From e65a9398d16a75efa265915dd177b9e48c62d263 Mon Sep 17 00:00:00 2001
+From: Mike Yuan <me@yhndnzj.com>
+Date: Sun, 22 Nov 2026 19:09:26 +0100
+Subject: [PATCH v2 4/4] mod_client_management: permit s2s via mod_saslauth in
+ strict mode
+
+Currently, mod_client_management yells at mod_saslauth being loaded,
+and blocks xmpp-sasl:auth wholesale. This is very much broken though,
+as mod_saslauth handles s2s EXTERNAL auth as well. Hence let's instead
+hook its authentication-attempt event if loaded, and fall back to
+total rejection otherwise.
+
+Co-authored-by: Kim Alvefur <zash@zash.se>
+---
+ mod_client_management.lua | 30 ++++++++++++++++++------------
+ 1 file changed, 18 insertions(+), 12 deletions(-)
+
+diff --git a/mod_client_management.lua b/mod_client_management.lua
+index 72f5527..00d4f91 100644
+--- a/mod_client_management.lua
++++ b/mod_client_management.lua
+@@ -99,19 +99,25 @@ if strict then
+ 	end, 500);
+ 
+ 	if modulemanager.get_modules_for_host(module.host):contains("saslauth") then
+-		module:log("error", "mod_saslauth is enabled, but enforce_client_ids is enabled and will prevent it from working");
++		module:hook("authentication-attempt", function (event)
++			if event.stanza.attr.xmlns ~= xmlns_sasl then return; end
++			module:log("warn", "Blocking legacy SASL authentication because enforce_client_ids is enabled");
++			event.allowed = false;
++			event.error_condition = "malformed-request";
++			event.error_text = "Legacy SASL authentication is not available on this server";
++			return true;
++		end, 1000);
++	else
++		module:hook_tag(xmlns_sasl, "auth", function (event)
++			-- Block legacy SASL, if for some reason it is being used (e.g. clients try it without advertisement)
++			module:log("warn", "Blocking legacy SASL authentication because enforce_client_ids is enabled");
++			local failure = st.stanza("failure", { xmlns = xmlns_sasl })
++				:tag("malformed-request"):up()
++				:text_tag("text", "Legacy SASL authentication is not available on this server");
++			event.session.send(failure);
++			return true;
++		end);
+ 	end
+-
+-	module:hook_tag(xmlns_sasl, "auth", function (event)
+-		-- Block legacy SASL, if for some reason it is being used (either mod_saslauth is loaded,
+-		-- or clients try it without advertisement)
+-		module:log("warn", "Blocking legacy SASL authentication because enforce_client_ids is enabled");
+-		local failure = st.stanza("failure", { xmlns = xmlns_sasl })
+-			:tag("malformed-request"):up()
+-			:text_tag("text", "Legacy SASL authentication is not available on this server");
+-		event.session.send(failure);
+-		return true;
+-	end);
+ else
+ 	-- Legacy client compat code
+ 	module:hook("authentication-success", function (event)
+-- 
+2.54.0 (Apple Git-157)
+

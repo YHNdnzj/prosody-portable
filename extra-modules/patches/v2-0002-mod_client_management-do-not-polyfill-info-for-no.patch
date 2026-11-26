@@ -1,0 +1,27 @@
+From dbcc8081e941b8503e284747dec557b1388e5c19 Mon Sep 17 00:00:00 2001
+From: Mike Yuan <me@yhndnzj.com>
+Date: Sun, 22 Nov 2026 16:40:36 +0100
+Subject: [PATCH v2 2/4] mod_client_management: do not polyfill info for
+ non-c2s sessions
+
+They will never be consumed as s2s sessions do not bind resources.
+IOW resource-bind events are never triggered on them.
+---
+ mod_client_management.lua | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/mod_client_management.lua b/mod_client_management.lua
+index 7044c52..866a6e7 100644
+--- a/mod_client_management.lua
++++ b/mod_client_management.lua
+@@ -114,6 +114,7 @@ else
+ 	-- Legacy client compat code
+ 	module:hook("authentication-success", function (event)
+ 		local session = event.session;
++		if session.base_type ~= "c2s" then return; end
+ 		if session.client_id then return; end -- SASL2 client
+ 
+ 		local sasl_handler = session.sasl_handler;
+-- 
+2.54.0 (Apple Git-157)
+
